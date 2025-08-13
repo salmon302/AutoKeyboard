@@ -191,5 +191,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This software is for legitimate automation purposes only. Users are responsible for complying with applicable laws and terms of service when using automation tools. The developers are not responsible for misuse of this software.
 
 ---
-
-**Made with ❤️ for productivity and automation enthusiasts!**
