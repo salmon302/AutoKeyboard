@@ -85,13 +85,48 @@ def get_key_code(key) -> str:
 def parse_key_code(key_code: str):
     """Parse a key code back to a key object."""
     if key_code.startswith("char:"):
-        return keyboard.KeyCode.from_char(key_code[5:])
+        char = key_code[5:]
+        return keyboard.KeyCode.from_char(char)
     elif key_code.startswith("key:"):
         key_name = key_code[4:]
         try:
             return getattr(keyboard.Key, key_name)
         except AttributeError:
+            # Handle special numpad keys
+            if key_name.startswith('num_'):
+                numpad_mapping = {
+                    'num_0': keyboard.KeyCode.from_vk(96),
+                    'num_1': keyboard.KeyCode.from_vk(97),
+                    'num_2': keyboard.KeyCode.from_vk(98),
+                    'num_3': keyboard.KeyCode.from_vk(99),
+                    'num_4': keyboard.KeyCode.from_vk(100),
+                    'num_5': keyboard.KeyCode.from_vk(101),
+                    'num_6': keyboard.KeyCode.from_vk(102),
+                    'num_7': keyboard.KeyCode.from_vk(103),
+                    'num_8': keyboard.KeyCode.from_vk(104),
+                    'num_9': keyboard.KeyCode.from_vk(105),
+                    'num_multiply': keyboard.KeyCode.from_vk(106),
+                    'num_plus': keyboard.KeyCode.from_vk(107),
+                    'num_minus': keyboard.KeyCode.from_vk(109),
+                    'num_decimal': keyboard.KeyCode.from_vk(110),
+                    'num_divide': keyboard.KeyCode.from_vk(111),
+                    'num_enter': keyboard.KeyCode.from_vk(13),
+                }
+                return numpad_mapping.get(key_name)
             return None
+    elif key_code.startswith("combo:"):
+        # Handle key combinations
+        combo_str = key_code[6:]
+        # For combinations, we'll return a special tuple
+        # This will need special handling in the player
+        parts = combo_str.split('+')
+        keys = []
+        for part in parts:
+            if hasattr(keyboard.Key, part):
+                keys.append(getattr(keyboard.Key, part))
+            elif len(part) == 1:
+                keys.append(keyboard.KeyCode.from_char(part))
+        return tuple(keys) if len(keys) > 1 else (keys[0] if keys else None)
     return None
 
 
@@ -120,12 +155,17 @@ def get_key_code_from_name(key_name: str) -> str:
     """Convert a key name to a key code for storage."""
     key_name = key_name.strip()
     
-    # Handle single characters
-    if len(key_name) == 1 and key_name.isalnum():
-        return f"char:{key_name.lower()}"
+    # Handle single characters (letters, numbers, symbols)
+    if len(key_name) == 1:
+        if key_name.isalnum():
+            return f"char:{key_name.lower()}"
+        else:
+            # Handle single character symbols
+            return f"char:{key_name}"
     
-    # Handle special keys
+    # Comprehensive special key mapping
     special_key_mapping = {
+        # Navigation keys
         'space': 'key:space',
         'tab': 'key:tab', 
         'enter': 'key:enter',
@@ -139,6 +179,10 @@ def get_key_code_from_name(key_name: str) -> str:
         'end': 'key:end',
         'page up': 'key:page_up',
         'page down': 'key:page_down',
+        'pageup': 'key:page_up',
+        'pagedown': 'key:page_down',
+        
+        # Arrow keys
         'up arrow': 'key:up',
         'down arrow': 'key:down',
         'left arrow': 'key:left',
@@ -147,18 +191,88 @@ def get_key_code_from_name(key_name: str) -> str:
         'down': 'key:down',
         'left': 'key:left',
         'right': 'key:right',
+        
+        # Modifier keys
         'ctrl': 'key:ctrl_l',
+        'control': 'key:ctrl_l',
         'alt': 'key:alt_l',
         'shift': 'key:shift_l',
-        'control': 'key:ctrl_l',
         'menu': 'key:alt_l',
         'windows': 'key:cmd',
+        'win': 'key:cmd',
         'cmd': 'key:cmd',
+        'left ctrl': 'key:ctrl_l',
+        'right ctrl': 'key:ctrl_r',
+        'left alt': 'key:alt_l', 
+        'right alt': 'key:alt_r',
+        'left shift': 'key:shift_l',
+        'right shift': 'key:shift_r',
+        
+        # Lock keys
         'caps lock': 'key:caps_lock',
+        'capslock': 'key:caps_lock',
         'num lock': 'key:num_lock',
+        'numlock': 'key:num_lock',
         'scroll lock': 'key:scroll_lock',
+        'scrolllock': 'key:scroll_lock',
+        
+        # System keys
         'print screen': 'key:print_screen',
-        'pause': 'key:pause'
+        'printscreen': 'key:print_screen',
+        'pause': 'key:pause',
+        'break': 'key:pause',
+        'menu': 'key:menu',
+        
+        # Numpad keys
+        'numpad 0': 'key:num_0',
+        'numpad 1': 'key:num_1',
+        'numpad 2': 'key:num_2',
+        'numpad 3': 'key:num_3',
+        'numpad 4': 'key:num_4',
+        'numpad 5': 'key:num_5',
+        'numpad 6': 'key:num_6',
+        'numpad 7': 'key:num_7',
+        'numpad 8': 'key:num_8',
+        'numpad 9': 'key:num_9',
+        'numpad +': 'key:num_plus',
+        'numpad -': 'key:num_minus',
+        'numpad *': 'key:num_multiply',
+        'numpad /': 'key:num_divide',
+        'numpad .': 'key:num_decimal',
+        'numpad enter': 'key:num_enter',
+        
+        # Symbol keys (for reference, though single chars are handled above)
+        'minus': 'char:-',
+        'equals': 'char:=',
+        'plus': 'char:+',
+        'underscore': 'char:_',
+        'left bracket': 'char:[',
+        'right bracket': 'char:]',
+        'left brace': 'char:{',
+        'right brace': 'char:}',
+        'semicolon': 'char:;',
+        'quote': 'char:\'',
+        'double quote': 'char:"',
+        'comma': 'char:,',
+        'period': 'char:.',
+        'slash': 'char:/',
+        'backslash': 'char:\\',
+        'backtick': 'char:`',
+        'tilde': 'char:~',
+        'exclamation': 'char:!',
+        'at': 'char:@',
+        'hash': 'char:#',
+        'dollar': 'char:$',
+        'percent': 'char:%',
+        'caret': 'char:^',
+        'ampersand': 'char:&',
+        'asterisk': 'char:*',
+        'left paren': 'char:(',
+        'right paren': 'char:)',
+        'question': 'char:?',
+        'less than': 'char:<',
+        'greater than': 'char:>',
+        'pipe': 'char:|',
     }
     
     lower_name = key_name.lower()
@@ -167,9 +281,34 @@ def get_key_code_from_name(key_name: str) -> str:
     if lower_name in special_key_mapping:
         return special_key_mapping[lower_name]
     
-    # Handle function keys
+    # Handle function keys F1-F24
     if lower_name.startswith('f') and lower_name[1:].isdigit():
         return f"key:{lower_name}"
+    
+    # Handle combination keys (like "ctrl+a")
+    if '+' in key_name:
+        # This is a combination, handle each part
+        parts = [part.strip() for part in key_name.split('+')]
+        converted_parts = []
+        for part in parts:
+            part_code = get_key_code_from_name(part)
+            if part_code.startswith('key:'):
+                converted_parts.append(part_code[4:])
+            elif part_code.startswith('char:'):
+                converted_parts.append(part_code[5:])
+            else:
+                converted_parts.append(part.lower())
+        return f"combo:{'+'.join(converted_parts)}"
+    
+    # Try to match against pynput Key attributes
+    try:
+        # Clean the name for pynput attribute lookup
+        clean_name = lower_name.replace(' ', '_').replace('-', '_')
+        # Test if this attribute exists in keyboard.Key
+        test_key = getattr(keyboard.Key, clean_name)
+        return f"key:{clean_name}"
+    except AttributeError:
+        pass
     
     # Default to character if single char, otherwise treat as special key
     if len(key_name) == 1:

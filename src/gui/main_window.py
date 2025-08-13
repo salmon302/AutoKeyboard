@@ -111,6 +111,8 @@ class MainWindow:
         self.button_frame = ttk.Frame(self.main_frame)
         self.clear_button = ttk.Button(self.button_frame, text="Clear", command=self._on_clear)
         self.quick_setup_button = ttk.Button(self.button_frame, text="Quick Setup", command=self._on_quick_setup)
+        self.start_script_button = ttk.Button(self.button_frame, text="Start Script", command=self._on_start_script)
+        self.stop_script_button = ttk.Button(self.button_frame, text="Stop Script", command=self._on_stop_script, state="disabled")
         self.edit_button = ttk.Button(self.button_frame, text="Edit Script", command=self._on_edit_script)
         self.save_button = ttk.Button(self.button_frame, text="Save Script", command=self._on_save_script)
         self.load_button = ttk.Button(self.button_frame, text="Load Script", command=self._on_load_script)
@@ -223,11 +225,17 @@ class MainWindow:
         
         # Action buttons
         self.button_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        self.clear_button.grid(row=0, column=0, padx=(0, 5))
+        
+        # First row of buttons
+        self.clear_button.grid(row=0, column=0, padx=(0, 5), sticky="w")
         self.quick_setup_button.grid(row=0, column=1, padx=(0, 5))
-        self.edit_button.grid(row=0, column=2, padx=(0, 5))
-        self.save_button.grid(row=0, column=3, padx=(0, 5))
-        self.load_button.grid(row=0, column=4)
+        self.start_script_button.grid(row=0, column=2, padx=(0, 5))
+        self.stop_script_button.grid(row=0, column=3, padx=(0, 5))
+        
+        # Second row of buttons
+        self.edit_button.grid(row=1, column=0, padx=(0, 5), pady=(5, 0), sticky="w")
+        self.save_button.grid(row=1, column=1, padx=(0, 5), pady=(5, 0))
+        self.load_button.grid(row=1, column=2, pady=(5, 0))
         
         # Action list
         self.action_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
@@ -507,6 +515,8 @@ class MainWindow:
         self.is_recording = True
         self.status_var.set("Status: Recording... Press Start/Stop hotkey to stop")
         self.clear_button.config(state="disabled")
+        self.start_script_button.config(state="disabled")
+        self.stop_script_button.config(state="disabled")
     
     def _on_recording_stopped(self):
         """Handle recording stopped."""
@@ -515,6 +525,8 @@ class MainWindow:
         count = sequence.get_key_count()
         self.status_var.set(f"Status: {count} keys recorded")
         self.clear_button.config(state="normal")
+        self.start_script_button.config(state="normal")
+        self.stop_script_button.config(state="disabled")
     
     def _on_key_recorded(self, action):
         """Handle key recorded."""
@@ -533,6 +545,8 @@ class MainWindow:
         self.is_playing = True
         self.status_var.set("Status: Playing back recorded keys...")
         self.clear_button.config(state="disabled")
+        self.start_script_button.config(state="disabled")
+        self.stop_script_button.config(state="normal")
     
     def _on_playback_stopped(self):
         """Handle playback stopped."""
@@ -541,6 +555,8 @@ class MainWindow:
         count = sequence.get_key_count()
         self.status_var.set(f"Status: {count} keys recorded")
         self.clear_button.config(state="normal")
+        self.start_script_button.config(state="normal")
+        self.stop_script_button.config(state="disabled")
     
     def _on_start_stop_hotkey(self):
         """Handle start/stop hotkey pressed."""
@@ -558,6 +574,26 @@ class MainWindow:
             else:
                 # Can't show messagebox from hotkey thread, update status instead
                 self.status_var.set("Status: No keys recorded to play")
+    
+    def _on_start_script(self):
+        """Handle start script button."""
+        if not self.is_recording and not self.is_playing:
+            sequence = self.recorder.get_recorded_sequence()
+            if sequence and sequence.actions:
+                self.player.start_playback(sequence)
+                # Update button states
+                self.start_script_button.config(state="disabled")
+                self.stop_script_button.config(state="normal")
+            else:
+                messagebox.showwarning("No Script", "No actions recorded to play. Use recording, Quick Setup, or load a script first.")
+    
+    def _on_stop_script(self):
+        """Handle stop script button."""
+        if self.is_playing:
+            self.player.stop_playback()
+            # Update button states
+            self.start_script_button.config(state="normal")
+            self.stop_script_button.config(state="disabled")
     
     def apply_settings(self, settings: Settings):
         """Apply saved settings to the GUI."""
