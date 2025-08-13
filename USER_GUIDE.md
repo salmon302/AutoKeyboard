@@ -13,11 +13,34 @@
 ## How to Use
 
 ### 1. Setting Up Hotkeys
-- **Start/Stop Hotkey**: Choose from dropdown (default: F1)
-  - Press once to start recording
-  - Press again to stop recording
-- **Play Hotkey**: Choose from dropdown (default: F2)
-  - Press to play back recorded keys
+
+The application uses two main hotkeys:
+- **Start/Stop Hotkey**: Begins or ends key recording  
+- **Play Hotkey**: Plays back the recorded sequence
+
+**To set a hotkey:**
+1. Click the "Capture" button next to the hotkey you want to set
+2. In the capture dialog, press the key or key combination you want to use
+3. Click "Use This Key" to confirm
+
+**Supported hotkey formats:**
+- Single keys: `F1`, `A`, `Space`, `Enter`
+- Key combinations: `Ctrl+F1`, `Alt+Tab`, `Shift+A`
+- Complex combinations: `Ctrl+Alt+F5`
+
+### 2. Quick Setup Mode
+
+For simple automation tasks, use Quick Setup:
+
+1. Click the **"Quick Setup"** button
+2. Click **"Capture Key"** and press the key you want to automate
+3. Set the **delay between presses** (in milliseconds)
+4. Choose repeat options:
+   - **Repeat X times**: Specify an exact number of repetitions
+   - **Repeat continuously**: Keep repeating until stopped
+5. Click **"Create Automation"**
+
+The script will be automatically created and ready to use with your play hotkey.
 
 ### 2. Recording Keys
 1. Set your Start/Stop hotkey

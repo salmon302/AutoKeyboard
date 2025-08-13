@@ -60,8 +60,8 @@ class AutoKeyboardApp:
         """Start the application main loop."""
         try:
             # Set up window properties
-            self.root.title("AutoKeyboard Presser v1.0")
-            self.root.geometry("500x400")
+            self.root.title("AutoKeyboard Presser v1.1")
+            self.root.geometry("650x400")
             self.root.resizable(False, False)
             
             # Handle window closing

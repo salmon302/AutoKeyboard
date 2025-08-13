@@ -14,6 +14,7 @@ from data.key_sequence import KeySequence
 from data.action_storage import ActionStorage
 from utils.key_utils import HOTKEY_OPTIONS, get_key_display_name
 from gui.script_editor import ScriptEditorWindow, ScriptSaveDialog, ScriptLoadDialog
+from gui.key_capture_dialog import KeyCaptureDialog, QuickSetupDialog
 
 
 class MainWindow:
@@ -69,28 +70,47 @@ class MainWindow:
         # Start/Stop hotkey
         self.start_stop_label = ttk.Label(self.hotkey_frame, text="Start/Stop Hotkey:")
         self.start_stop_var = tk.StringVar(value="F1")
-        self.start_stop_combo = ttk.Combobox(
-            self.hotkey_frame, 
+        
+        self.start_stop_frame = ttk.Frame(self.hotkey_frame)
+        self.start_stop_display = ttk.Label(
+            self.start_stop_frame,
             textvariable=self.start_stop_var,
-            values=HOTKEY_OPTIONS,
-            state="readonly",
-            width=15
+            width=15,
+            relief="sunken",
+            anchor="center",
+            background="white"
+        )
+        self.start_stop_button = ttk.Button(
+            self.start_stop_frame,
+            text="Capture",
+            command=self._on_capture_start_stop_hotkey,
+            width=8
         )
         
         # Play hotkey
         self.play_label = ttk.Label(self.hotkey_frame, text="Play Hotkey:")
         self.play_var = tk.StringVar(value="F2")
-        self.play_combo = ttk.Combobox(
-            self.hotkey_frame,
+        
+        self.play_frame = ttk.Frame(self.hotkey_frame)
+        self.play_display = ttk.Label(
+            self.play_frame,
             textvariable=self.play_var,
-            values=HOTKEY_OPTIONS,
-            state="readonly",
-            width=15
+            width=15,
+            relief="sunken",
+            anchor="center",
+            background="white"
+        )
+        self.play_button = ttk.Button(
+            self.play_frame,
+            text="Capture",
+            command=self._on_capture_play_hotkey,
+            width=8
         )
         
         # Action buttons
         self.button_frame = ttk.Frame(self.main_frame)
         self.clear_button = ttk.Button(self.button_frame, text="Clear", command=self._on_clear)
+        self.quick_setup_button = ttk.Button(self.button_frame, text="Quick Setup", command=self._on_quick_setup)
         self.edit_button = ttk.Button(self.button_frame, text="Edit Script", command=self._on_edit_script)
         self.save_button = ttk.Button(self.button_frame, text="Save Script", command=self._on_save_script)
         self.load_button = ttk.Button(self.button_frame, text="Load Script", command=self._on_load_script)
@@ -188,19 +208,26 @@ class MainWindow:
         
         # Hotkey section
         self.hotkey_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        self.hotkey_frame.columnconfigure(1, weight=0)
+        self.hotkey_frame.columnconfigure(3, weight=1)
         
-        self.start_stop_label.grid(row=0, column=0, sticky="w", padx=(0, 5))
-        self.start_stop_combo.grid(row=0, column=1, padx=(0, 20))
+        self.start_stop_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        self.start_stop_frame.grid(row=0, column=1, padx=(0, 30), sticky="w")
+        self.start_stop_display.pack(side="left", padx=(0, 5))
+        self.start_stop_button.pack(side="left")
         
-        self.play_label.grid(row=0, column=2, sticky="w", padx=(0, 5))
-        self.play_combo.grid(row=0, column=3)
+        self.play_label.grid(row=0, column=2, sticky="w", padx=(0, 10))
+        self.play_frame.grid(row=0, column=3, sticky="w")
+        self.play_display.pack(side="left", padx=(0, 5))
+        self.play_button.pack(side="left")
         
         # Action buttons
         self.button_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         self.clear_button.grid(row=0, column=0, padx=(0, 5))
-        self.edit_button.grid(row=0, column=1, padx=(0, 5))
-        self.save_button.grid(row=0, column=2, padx=(0, 5))
-        self.load_button.grid(row=0, column=3)
+        self.quick_setup_button.grid(row=0, column=1, padx=(0, 5))
+        self.edit_button.grid(row=0, column=2, padx=(0, 5))
+        self.save_button.grid(row=0, column=3, padx=(0, 5))
+        self.load_button.grid(row=0, column=4)
         
         # Action list
         self.action_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
@@ -241,10 +268,6 @@ class MainWindow:
     
     def _setup_bindings(self):
         """Setup event bindings."""
-        # Hotkey combo changes
-        self.start_stop_combo.bind("<<ComboboxSelected>>", self._on_start_stop_hotkey_changed)
-        self.play_combo.bind("<<ComboboxSelected>>", self._on_play_hotkey_changed)
-        
         # Timing changes
         self.timing_spinbox.bind("<FocusOut>", self._on_timing_changed)
         self.timing_spinbox.bind("<Return>", self._on_timing_changed)
@@ -253,6 +276,90 @@ class MainWindow:
         self.repeat_count_spinbox.bind("<Return>", self._on_repeat_count_changed)
     
     # Event handlers
+    def _on_capture_start_stop_hotkey(self):
+        """Handle capture start/stop hotkey button."""
+        def on_hotkey_captured(hotkey):
+            if self.hotkey_manager.set_start_stop_hotkey(hotkey):
+                self.start_stop_var.set(hotkey)
+                self.settings.set('start_stop_hotkey', hotkey)
+            else:
+                messagebox.showerror("Invalid Hotkey", f"Could not set hotkey: {hotkey}")
+        
+        KeyCaptureDialog(
+            self.root,
+            "Capture Start/Stop Hotkey",
+            on_hotkey_captured,
+            allow_combinations=True
+        )
+    
+    def _on_capture_play_hotkey(self):
+        """Handle capture play hotkey button."""
+        def on_hotkey_captured(hotkey):
+            if self.hotkey_manager.set_play_hotkey(hotkey):
+                self.play_var.set(hotkey)
+                self.settings.set('play_hotkey', hotkey)
+            else:
+                messagebox.showerror("Invalid Hotkey", f"Could not set hotkey: {hotkey}")
+        
+        KeyCaptureDialog(
+            self.root,
+            "Capture Play Hotkey",
+            on_hotkey_captured,
+            allow_combinations=True
+        )
+    
+    def _on_quick_setup(self):
+        """Handle quick setup button."""
+        def on_quick_setup_completed(key, delay, repeat_count, continuous):
+            # Create a simple sequence with the selected key
+            from data.key_sequence import KeySequence, KeyAction
+            from data.action_storage import ActionType
+            from utils.key_utils import get_key_code_from_name
+            
+            sequence = KeySequence("Quick Setup")
+            
+            # Add the key action
+            try:
+                # Convert key name to key code
+                key_code = get_key_code_from_name(key)
+                action = KeyAction(
+                    action_type=ActionType.KEY_PRESS,
+                    key=key_code,
+                    timestamp=0.0
+                )
+                sequence.add_action(action)
+                
+                # Set the sequence as current
+                self.recorder.current_sequence = sequence
+                
+                # Update display
+                self._update_action_list_from_sequence(sequence)
+                
+                # Update timing settings
+                self.timing_var.set(delay)
+                self.player.set_timing(delay)
+                self.settings.set('time_between_presses', delay)
+                
+                # Update repeat settings
+                if continuous:
+                    self.repeat_var.set(2)
+                    self.player.set_repeat_continuously(True)
+                    self.settings.set('repeat_continuously', True)
+                else:
+                    self.repeat_var.set(1)
+                    self.repeat_count_var.set(repeat_count)
+                    self.player.set_repeat_count(repeat_count)
+                    self.settings.set('repeat_continuously', False)
+                    self.settings.set('repeat_count', repeat_count)
+                
+                # Update status
+                self.status_var.set(f"Status: Quick setup - '{key}' automation ready")
+                
+            except Exception as e:
+                messagebox.showerror("Quick Setup Error", f"Failed to create automation: {e}")
+        
+        QuickSetupDialog(self.root, on_quick_setup_completed)
+    
     def _on_start_stop_hotkey_changed(self, event=None):
         """Handle start/stop hotkey selection change."""
         hotkey = self.start_stop_var.get()

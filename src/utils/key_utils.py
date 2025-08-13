@@ -116,6 +116,70 @@ def normalize_hotkey_string(hotkey_str: str) -> str:
     return '+'.join(parts)
 
 
+def get_key_code_from_name(key_name: str) -> str:
+    """Convert a key name to a key code for storage."""
+    key_name = key_name.strip()
+    
+    # Handle single characters
+    if len(key_name) == 1 and key_name.isalnum():
+        return f"char:{key_name.lower()}"
+    
+    # Handle special keys
+    special_key_mapping = {
+        'space': 'key:space',
+        'tab': 'key:tab', 
+        'enter': 'key:enter',
+        'return': 'key:enter',
+        'escape': 'key:esc',
+        'esc': 'key:esc',
+        'backspace': 'key:backspace',
+        'delete': 'key:delete',
+        'insert': 'key:insert',
+        'home': 'key:home',
+        'end': 'key:end',
+        'page up': 'key:page_up',
+        'page down': 'key:page_down',
+        'up arrow': 'key:up',
+        'down arrow': 'key:down',
+        'left arrow': 'key:left',
+        'right arrow': 'key:right',
+        'up': 'key:up',
+        'down': 'key:down',
+        'left': 'key:left',
+        'right': 'key:right',
+        'ctrl': 'key:ctrl_l',
+        'alt': 'key:alt_l',
+        'shift': 'key:shift_l',
+        'control': 'key:ctrl_l',
+        'menu': 'key:alt_l',
+        'windows': 'key:cmd',
+        'cmd': 'key:cmd',
+        'caps lock': 'key:caps_lock',
+        'num lock': 'key:num_lock',
+        'scroll lock': 'key:scroll_lock',
+        'print screen': 'key:print_screen',
+        'pause': 'key:pause'
+    }
+    
+    lower_name = key_name.lower()
+    
+    # Check special keys first
+    if lower_name in special_key_mapping:
+        return special_key_mapping[lower_name]
+    
+    # Handle function keys
+    if lower_name.startswith('f') and lower_name[1:].isdigit():
+        return f"key:{lower_name}"
+    
+    # Default to character if single char, otherwise treat as special key
+    if len(key_name) == 1:
+        return f"char:{key_name.lower()}"
+    else:
+        # Try to map to a key name
+        clean_name = lower_name.replace(' ', '_')
+        return f"key:{clean_name}"
+
+
 def validate_hotkey_string(hotkey_str: str) -> bool:
     """Validate if hotkey string is valid."""
     if not hotkey_str or hotkey_str == "None":

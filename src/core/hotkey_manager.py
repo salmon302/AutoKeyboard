@@ -51,30 +51,44 @@ class HotkeyManager:
         """Update the global hotkey listener with current assignments."""
         # Stop existing listener
         if self.listener:
-            self.listener.stop()
+            try:
+                self.listener.stop()
+            except Exception as e:
+                print(f"Error stopping previous hotkey listener: {e}")
             self.listener = None
         
         # Build new hotkey mapping
         hotkey_mapping = {}
         
         if self.start_stop_hotkey and self.on_start_stop_pressed:
-            hotkey_mapping[self._format_hotkey(self.start_stop_hotkey)] = self._on_start_stop_activated
+            formatted_key = self._format_hotkey(self.start_stop_hotkey)
+            if formatted_key:
+                hotkey_mapping[formatted_key] = self._on_start_stop_activated
+                print(f"Registered start/stop hotkey: {formatted_key}")
             
         if self.play_hotkey and self.on_play_pressed:
-            hotkey_mapping[self._format_hotkey(self.play_hotkey)] = self._on_play_activated
+            formatted_key = self._format_hotkey(self.play_hotkey)
+            if formatted_key:
+                hotkey_mapping[formatted_key] = self._on_play_activated
+                print(f"Registered play hotkey: {formatted_key}")
         
         # Start new listener if we have hotkeys
         if hotkey_mapping:
             try:
+                print(f"Starting hotkey listener with mappings: {list(hotkey_mapping.keys())}")
                 self.listener = keyboard.GlobalHotKeys(hotkey_mapping)
                 self.listener.start()
                 self.is_active = True
+                print("Hotkey listener started successfully")
                 return True
             except Exception as e:
                 print(f"Error setting up hotkeys: {e}")
+                import traceback
+                traceback.print_exc()
                 self.is_active = False
                 return False
         else:
+            print("No hotkeys to register")
             self.is_active = False
             return True
     
@@ -89,17 +103,38 @@ class HotkeyManager:
         formatted_parts = []
         
         for part in parts:
-            lower_part = part.lower()
-            if lower_part in ['ctrl', 'alt', 'shift']:
-                formatted_parts.append(f'<{lower_part}>')
+            lower_part = part.strip().lower()
+            if lower_part in ['ctrl', 'control']:
+                formatted_parts.append('<ctrl>')
+            elif lower_part in ['alt', 'menu']:
+                formatted_parts.append('<alt>')
+            elif lower_part in ['shift']:
+                formatted_parts.append('<shift>')
+            elif lower_part in ['cmd', 'win', 'windows']:
+                formatted_parts.append('<cmd>')
             elif lower_part.startswith('f') and lower_part[1:].isdigit():
-                # Function key
+                # Function key - ensure it's in proper format
                 formatted_parts.append(f'<{lower_part}>')
+            elif len(lower_part) == 1 and lower_part.isalnum():
+                # Single character key
+                formatted_parts.append(lower_part)
+            elif lower_part in ['space', 'tab', 'enter', 'return', 'escape', 'esc', 'backspace', 'delete', 'insert', 'home', 'end', 'page_up', 'page_down', 'up', 'down', 'left', 'right']:
+                # Special keys
+                key_mapping = {
+                    'return': 'enter',
+                    'esc': 'escape',
+                    'page_up': 'page_up',
+                    'page_down': 'page_down'
+                }
+                mapped_key = key_mapping.get(lower_part, lower_part)
+                formatted_parts.append(f'<{mapped_key}>')
             else:
-                # Regular key
+                # Try as-is for other keys
                 formatted_parts.append(lower_part)
         
-        return '+'.join(formatted_parts)
+        result = '+'.join(formatted_parts)
+        print(f"Hotkey format conversion: '{hotkey_str}' -> '{result}'")  # Debug output
+        return result
     
     def _on_start_stop_activated(self):
         """Handle start/stop hotkey activation."""
