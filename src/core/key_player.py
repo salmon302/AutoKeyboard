@@ -111,33 +111,127 @@ class KeyPlayer:
         """Play a sequence once."""
         if not sequence.actions:
             return
-            
-        # Get only key press actions for simple playback
-        key_presses = [action for action in sequence.actions 
-                      if action.action_type == ActionType.KEY_PRESS]
         
-        for i, action in enumerate(key_presses):
+        for i, action in enumerate(sequence.actions):
             if self.stop_event.is_set():
                 break
                 
             try:
-                # Parse key from stored code
-                key = parse_key_code(action.key)
-                if key is None:
-                    continue
+                if action.action_type == ActionType.KEY_PRESS:
+                    # Handle key press
+                    self._play_key_action(action)
                     
-                # Press and release key
-                self.controller.press(key)
-                time.sleep(0.01)  # Small delay for key registration
-                self.controller.release(key)
+                elif action.action_type == ActionType.DELAY:
+                    # Handle delay
+                    delay_seconds = action.duration
+                    if delay_seconds > 0:
+                        self._wait_interruptible(delay_seconds)
                 
-                # Wait before next key (except for last one)
-                if i < len(key_presses) - 1:
+                # Small delay between actions if no explicit delay
+                if (i < len(sequence.actions) - 1 and 
+                    action.action_type == ActionType.KEY_PRESS and
+                    (i + 1 >= len(sequence.actions) or 
+                     sequence.actions[i + 1].action_type != ActionType.DELAY)):
                     self._wait_interruptible(self.time_between_presses / 1000.0)
                     
             except Exception as e:
-                print(f"Error playing key {action.key}: {e}")
+                print(f"Error playing action {i}: {e}")
                 continue
+    
+    def _play_key_action(self, action: KeyAction):
+        """Play a single key action."""
+        try:
+            # Handle different key formats
+            key_code = action.key
+            
+            if key_code.startswith("combo:"):
+                # Handle key combinations like ctrl+c
+                self._play_key_combination(key_code[6:])
+            elif key_code.startswith("char:"):
+                # Single character
+                char = key_code[5:]
+                key = parse_key_code(key_code)
+                if key:
+                    self.controller.press(key)
+                    time.sleep(0.01)
+                    self.controller.release(key)
+            elif key_code.startswith("key:"):
+                # Special key
+                key = parse_key_code(key_code)
+                if key:
+                    self.controller.press(key)
+                    time.sleep(0.01)
+                    self.controller.release(key)
+            else:
+                # Fallback - try to parse normally
+                key = parse_key_code(key_code)
+                if key:
+                    self.controller.press(key)
+                    time.sleep(0.01)
+                    self.controller.release(key)
+                    
+        except Exception as e:
+            print(f"Error playing key {action.key}: {e}")
+    
+    def _play_key_combination(self, combo_string: str):
+        """Play a key combination like ctrl+c."""
+        try:
+            parts = [part.strip().lower() for part in combo_string.split('+')]
+            
+            # Map modifier names to keys
+            modifier_map = {
+                'ctrl': keyboard.Key.ctrl,
+                'alt': keyboard.Key.alt,
+                'shift': keyboard.Key.shift,
+                'cmd': keyboard.Key.cmd,
+                'win': keyboard.Key.cmd
+            }
+            
+            # Separate modifiers and main key
+            modifiers = []
+            main_key = None
+            
+            for part in parts:
+                if part in modifier_map:
+                    modifiers.append(modifier_map[part])
+                else:
+                    # This is the main key
+                    if part.startswith('f') and part[1:].isdigit():
+                        # Function key
+                        main_key = getattr(keyboard.Key, part)
+                    elif len(part) == 1:
+                        # Single character
+                        main_key = keyboard.KeyCode.from_char(part)
+                    else:
+                        # Special key
+                        special_keys = {
+                            'space': keyboard.Key.space,
+                            'enter': keyboard.Key.enter,
+                            'tab': keyboard.Key.tab,
+                            'escape': keyboard.Key.esc,
+                            'backspace': keyboard.Key.backspace,
+                            'delete': keyboard.Key.delete,
+                        }
+                        main_key = special_keys.get(part, keyboard.KeyCode.from_char(part))
+            
+            if main_key:
+                # Press modifiers
+                for modifier in modifiers:
+                    self.controller.press(modifier)
+                    time.sleep(0.01)
+                
+                # Press main key
+                self.controller.press(main_key)
+                time.sleep(0.01)
+                self.controller.release(main_key)
+                
+                # Release modifiers in reverse order
+                for modifier in reversed(modifiers):
+                    self.controller.release(modifier)
+                    time.sleep(0.01)
+                    
+        except Exception as e:
+            print(f"Error playing combination {combo_string}: {e}")
     
     def _wait_interruptible(self, seconds: float):
         """Wait for specified seconds, but can be interrupted."""

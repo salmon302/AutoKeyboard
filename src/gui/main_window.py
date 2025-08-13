@@ -11,7 +11,9 @@ from core.key_player import KeyPlayer
 from core.hotkey_manager import HotkeyManager
 from data.settings import Settings
 from data.key_sequence import KeySequence
+from data.action_storage import ActionStorage
 from utils.key_utils import HOTKEY_OPTIONS, get_key_display_name
+from gui.script_editor import ScriptEditorWindow, ScriptSaveDialog, ScriptLoadDialog
 
 
 class MainWindow:
@@ -24,6 +26,9 @@ class MainWindow:
         self.player = player
         self.hotkey_manager = hotkey_manager
         self.settings = settings
+        
+        # Initialize action storage
+        self.action_storage = ActionStorage()
         
         # State variables
         self.is_recording = False
@@ -87,6 +92,8 @@ class MainWindow:
         self.button_frame = ttk.Frame(self.main_frame)
         self.clear_button = ttk.Button(self.button_frame, text="Clear", command=self._on_clear)
         self.edit_button = ttk.Button(self.button_frame, text="Edit Script", command=self._on_edit_script)
+        self.save_button = ttk.Button(self.button_frame, text="Save Script", command=self._on_save_script)
+        self.load_button = ttk.Button(self.button_frame, text="Load Script", command=self._on_load_script)
         
         # Action list
         self.action_frame = ttk.LabelFrame(self.main_frame, text="Recorded Actions", padding="5")
@@ -190,8 +197,10 @@ class MainWindow:
         
         # Action buttons
         self.button_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        self.clear_button.grid(row=0, column=0, padx=(0, 10))
-        self.edit_button.grid(row=0, column=1)
+        self.clear_button.grid(row=0, column=0, padx=(0, 5))
+        self.edit_button.grid(row=0, column=1, padx=(0, 5))
+        self.save_button.grid(row=0, column=2, padx=(0, 5))
+        self.load_button.grid(row=0, column=3)
         
         # Action list
         self.action_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
@@ -280,15 +289,106 @@ class MainWindow:
             self.player.set_repeat_count(count)
             self.settings.set('repeat_count', count)
     
+    def _on_load_script(self):
+        """Handle load script button."""
+        # Show script selection dialog
+        ScriptLoadDialog(self.root, self.action_storage, self._on_script_loaded)
+    
+    def _on_save_script(self):
+        """Handle save script button."""
+        sequence = self.recorder.get_recorded_sequence()
+        if not sequence or not sequence.actions:
+            messagebox.showwarning("No Script", "No actions recorded to save.")
+            return
+        
+        # Show script save dialog
+        ScriptSaveDialog(self.root, self.action_storage, sequence, self._on_script_save_completed)
+    
+    def _on_script_loaded(self, sequence: KeySequence):
+        """Handle script loaded from file."""
+        # Set the loaded sequence as current
+        self.recorder.current_sequence = sequence
+        
+        # Update display
+        self._update_action_list_from_sequence(sequence)
+        
+        # Update status
+        key_count = len([a for a in sequence.actions if a.action_type.value == "key_press"])
+        self.status_var.set(f"Status: Script loaded - {key_count} keys")
+    
+    def _on_script_save_completed(self, success: bool, filename: str):
+        """Handle script save completion."""
+        if success:
+            messagebox.showinfo("Script Saved", f"Script saved successfully as '{filename}'")
+        else:
+            messagebox.showerror("Save Error", f"Failed to save script '{filename}'")
+    
+    def _update_action_list_from_sequence(self, sequence: KeySequence):
+        """Update the action list display from a sequence."""
+        self.action_listbox.delete(0, tk.END)
+        
+        for action in sequence.actions:
+            if action.action_type.value == "key_press":
+                try:
+                    from utils.key_utils import parse_key_code
+                    key = parse_key_code(action.key)
+                    key_name = get_key_display_name(key) if key else action.key
+                except:
+                    key_name = str(action.key)
+                self.action_listbox.insert(tk.END, f"Key: {key_name}")
+            elif action.action_type.value == "delay":
+                delay_ms = int(action.duration * 1000) if action.duration else 0
+                self.action_listbox.insert(tk.END, f"Delay: {delay_ms}ms")
+
     def _on_clear(self):
         """Handle clear button."""
         self.recorder.clear_sequence()
         self.action_listbox.delete(0, tk.END)
         self.status_var.set("Status: No Keys Recorded Yet")
     
+    def _on_script_saved(self, new_sequence: KeySequence):
+        """Handle script editor save."""
+        # Replace the current sequence with the edited one
+        self.recorder.current_sequence = new_sequence
+        
+        # Update the action list display
+        self.action_listbox.delete(0, tk.END)
+        
+        # Add actions to display
+        key_count = 0
+        for action in new_sequence.actions:
+            if action.action_type.value == "key_press":
+                try:
+                    from utils.key_utils import parse_key_code
+                    key = parse_key_code(action.key)
+                    key_name = get_key_display_name(key) if key else action.key
+                except:
+                    key_name = str(action.key)
+                self.action_listbox.insert(tk.END, f"Key: {key_name}")
+                key_count += 1
+            elif action.action_type.value == "delay":
+                delay_ms = int(action.duration * 1000) if action.duration else 0
+                self.action_listbox.insert(tk.END, f"Delay: {delay_ms}ms")
+        
+        # Update status
+        if key_count > 0:
+            self.status_var.set(f"Status: {key_count} keys loaded from script")
+        else:
+            self.status_var.set("Status: Script loaded (no keys)")
+    
     def _on_edit_script(self):
         """Handle edit script button."""
-        messagebox.showinfo("Edit Script", "Script editing feature coming soon!")
+        sequence = self.recorder.get_recorded_sequence()
+        if not sequence or not sequence.actions:
+            # Create empty sequence for editing
+            sequence = KeySequence("New Script")
+        
+        # Open script editor
+        editor = ScriptEditorWindow(
+            self.root,
+            sequence,
+            self._on_script_saved
+        )
     
     def _on_exit(self):
         """Handle exit button."""
