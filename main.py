@@ -29,6 +29,7 @@ from core.key_recorder import KeyRecorder
 from core.key_player import KeyPlayer
 from core.hotkey_manager import HotkeyManager
 from data.settings import Settings
+from version import get_version_string
 
 
 class AutoKeyboardApp:
@@ -60,7 +61,8 @@ class AutoKeyboardApp:
         """Start the application main loop."""
         try:
             # Set up window properties
-            self.root.title("AutoKeyboard Presser v1.1")
+            version = get_version_string()
+            self.root.title(f"AutoKeyboard Presser v{version}")
             self.root.geometry("650x450")
             self.root.resizable(False, False)
             

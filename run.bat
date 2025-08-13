@@ -1,6 +1,6 @@
 @echo off
-echo AutoKeyboard Presser v1.0
-echo ========================
+echo AutoKeyboard Presser
+echo ===================
 
 REM Check if virtual environment exists
 if not exist .venv (

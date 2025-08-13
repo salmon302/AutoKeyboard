@@ -1,0 +1,23 @@
+# Development Requirements
+# These packages are used for development, testing, and code quality
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+
+# Code Quality
+black>=22.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# Type Hints
+types-setuptools
+
+# Documentation
+sphinx>=5.0.0
+sphinx-rtd-theme
+
+# Build Tools
+build>=0.10.0
+twine>=4.0.0
