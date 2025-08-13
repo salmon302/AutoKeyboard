@@ -40,9 +40,31 @@
 - **Repeat continuously**: Loop the sequence indefinitely
 - **Disable countdown timer**: Skip countdown before playback
 
-### 5. Other Features
+### 5. Script Editing Features
+- **Edit Script**: Open advanced script editor for manual editing
+- **Save Script**: Save current recorded sequence to file
+- **Load Script**: Load previously saved scripts
+- **Script Templates**: Use built-in templates (Hello World, Copy/Paste, etc.)
+- **Advanced Actions**: Add delays, key combinations, and complex sequences
+
+#### Script Editor Features:
+- **Manual Key Entry**: Add individual keys or combinations
+- **Delay Controls**: Insert precise timing delays
+- **Validation**: Check script syntax before applying
+- **Templates**: Quick-start with common automation patterns
+- **Export/Import**: Save scripts as human-readable files
+
+#### Script Format:
+```
+KEY: a                # Press single key
+KEY: ctrl+c           # Key combination  
+DELAY: 1000          # Wait 1 second
+KEY: Enter           # Special keys
+```
+
+### 6. Other Features
 - **Clear**: Remove all recorded actions
-- **Edit Script**: (Feature coming soon)
+- **Script Management**: Save, load, and organize automation scripts
 
 ## Hotkey Options
 

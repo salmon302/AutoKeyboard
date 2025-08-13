@@ -19,12 +19,17 @@ a = Analysis(
         'core.hotkey_manager',
         'data.settings',
         'data.key_sequence', 
-        'utils.key_utils'
+        'data.action_storage',
+        'utils.key_utils',
+        'gui.script_editor'
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'matplotlib', 'numpy', 'pandas', 'scipy', 'PIL', 'cv2',
+        'torch', 'tensorflow', 'requests', 'urllib3'
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -44,7 +49,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,  # Disable UPX compression to reduce false positives
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,  # Set to False for GUI app (no console window)
@@ -53,5 +58,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,  # Add icon path here if you have one
-    version_file=None
+    version_file='version_info.txt'
 )

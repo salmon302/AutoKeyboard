@@ -28,6 +28,13 @@
 3. **Stop**: Press the Start/Stop hotkey again to stop recording
 4. **Play**: Press your Play hotkey to replay the recorded sequence
 
+### Advanced Features:
+1. **Script Editor**: Click "Edit Script" for advanced manual editing
+2. **Save/Load**: Use "Save Script" and "Load Script" to manage your automations
+3. **Templates**: Use built-in templates like "Hello World" and "Copy/Paste"
+4. **Key Combinations**: Create complex sequences with Ctrl+C, Alt+Tab, etc.
+5. **Custom Delays**: Add precise timing delays between actions
+
 ### Timing Controls:
 - **Time between presses**: Set delay between each keystroke (1-10000ms)
 - **Repeat options**: Choose specific count or continuous loop
@@ -38,6 +45,10 @@
 ✅ **Global Hotkeys** - Works even when minimized
 ✅ **Key Recording** - Capture any key sequence
 ✅ **Auto Playback** - Replay with precise timing
+✅ **Advanced Script Editor** - Manual editing with templates and validation
+✅ **Script Management** - Save, load, and organize automation scripts
+✅ **Key Combinations** - Support for Ctrl+C, Alt+Tab, etc.
+✅ **Precise Timing** - Custom delays and timing controls
 ✅ **Repeat Modes** - Specific count or continuous
 ✅ **Settings Memory** - Remembers your preferences
 ✅ **Portable** - No installation, runs anywhere
