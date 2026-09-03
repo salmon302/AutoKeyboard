@@ -98,3 +98,25 @@ class KeySequence:
     def __bool__(self) -> bool:
         """Return True if sequence has actions."""
         return len(self.actions) > 0
+    
+    def to_string(self) -> str:
+        """Return a human-readable string representation of the sequence."""
+        if not self.actions:
+            return "(empty sequence)"
+        
+        lines = []
+        from utils.key_utils import parse_key_code, get_key_display_name
+        
+        for action in self.actions:
+            if action.action_type == ActionType.KEY_PRESS:
+                try:
+                    key = parse_key_code(action.key)
+                    key_name = get_key_display_name(key) if key else action.key
+                except Exception:
+                    key_name = str(action.key)
+                lines.append(f"KEY: {key_name}")
+            elif action.action_type == ActionType.DELAY:
+                delay_ms = int(action.duration * 1000) if action.duration else 0
+                lines.append(f"DELAY: {delay_ms}")
+        
+        return "\n".join(lines)

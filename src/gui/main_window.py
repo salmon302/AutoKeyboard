@@ -35,6 +35,13 @@ class MainWindow:
         self.is_recording = False
         self.is_playing = False
         
+        # Mapping from listbox index to sequence action index.
+        # The listbox only shows KEY_PRESS and DELAY actions; KEY_RELEASE
+        # actions are skipped.  This list is rebuilt whenever the listbox
+        # is repopulated so that Delete can remove the correct underlying
+        # action(s) from the KeySequence.
+        self._listbox_action_indices: list = []
+        
         # Setup callbacks
         self._setup_callbacks()
         
@@ -113,6 +120,7 @@ class MainWindow:
         self.quick_setup_button = ttk.Button(self.button_frame, text="Quick Setup", command=self._on_quick_setup)
         self.start_script_button = ttk.Button(self.button_frame, text="Start Script", command=self._on_start_script)
         self.stop_script_button = ttk.Button(self.button_frame, text="Stop Script", command=self._on_stop_script, state="disabled")
+        self.stop_recording_button = ttk.Button(self.button_frame, text="Stop Recording", command=self._on_stop_recording, state="disabled")
         self.edit_button = ttk.Button(self.button_frame, text="Edit Script", command=self._on_edit_script)
         self.save_button = ttk.Button(self.button_frame, text="Save Script", command=self._on_save_script)
         self.load_button = ttk.Button(self.button_frame, text="Load Script", command=self._on_load_script)
@@ -231,6 +239,7 @@ class MainWindow:
         self.quick_setup_button.grid(row=0, column=1, padx=(0, 5))
         self.start_script_button.grid(row=0, column=2, padx=(0, 5))
         self.stop_script_button.grid(row=0, column=3, padx=(0, 5))
+        self.stop_recording_button.grid(row=0, column=4, padx=(0, 5))
         
         # Second row of buttons
         self.edit_button.grid(row=1, column=0, padx=(0, 5), pady=(5, 0), sticky="w")
@@ -282,6 +291,11 @@ class MainWindow:
         
         self.repeat_count_spinbox.bind("<FocusOut>", self._on_repeat_count_changed)
         self.repeat_count_spinbox.bind("<Return>", self._on_repeat_count_changed)
+        
+        # Delete key on action listbox to remove individual recorded keys
+        self.action_listbox.bind("<Delete>", self._on_delete_action)
+        self.action_listbox.bind("<BackSpace>", self._on_delete_action)
+        self.action_listbox.bind("<Double-Button-1>", self._on_action_double_click)
     
     # Event handlers
     def _on_capture_start_stop_hotkey(self):
@@ -441,8 +455,9 @@ class MainWindow:
     def _update_action_list_from_sequence(self, sequence: KeySequence):
         """Update the action list display from a sequence."""
         self.action_listbox.delete(0, tk.END)
+        self._listbox_action_indices.clear()
         
-        for action in sequence.actions:
+        for idx, action in enumerate(sequence.actions):
             if action.action_type.value == "key_press":
                 try:
                     from utils.key_utils import parse_key_code
@@ -451,14 +466,17 @@ class MainWindow:
                 except:
                     key_name = str(action.key)
                 self.action_listbox.insert(tk.END, f"Key: {key_name}")
+                self._listbox_action_indices.append(idx)
             elif action.action_type.value == "delay":
                 delay_ms = int(action.duration * 1000) if action.duration else 0
                 self.action_listbox.insert(tk.END, f"Delay: {delay_ms}ms")
+                self._listbox_action_indices.append(idx)
 
     def _on_clear(self):
         """Handle clear button."""
         self.recorder.clear_sequence()
         self.action_listbox.delete(0, tk.END)
+        self._listbox_action_indices.clear()
         self.status_var.set("Status: No Keys Recorded Yet")
     
     def _on_script_saved(self, new_sequence: KeySequence):
@@ -467,25 +485,10 @@ class MainWindow:
         self.recorder.current_sequence = new_sequence
         
         # Update the action list display
-        self.action_listbox.delete(0, tk.END)
-        
-        # Add actions to display
-        key_count = 0
-        for action in new_sequence.actions:
-            if action.action_type.value == "key_press":
-                try:
-                    from utils.key_utils import parse_key_code
-                    key = parse_key_code(action.key)
-                    key_name = get_key_display_name(key) if key else action.key
-                except:
-                    key_name = str(action.key)
-                self.action_listbox.insert(tk.END, f"Key: {key_name}")
-                key_count += 1
-            elif action.action_type.value == "delay":
-                delay_ms = int(action.duration * 1000) if action.duration else 0
-                self.action_listbox.insert(tk.END, f"Delay: {delay_ms}ms")
+        self._update_action_list_from_sequence(new_sequence)
         
         # Update status
+        key_count = new_sequence.get_key_count()
         if key_count > 0:
             self.status_var.set(f"Status: {key_count} keys loaded from script")
         else:
@@ -513,10 +516,11 @@ class MainWindow:
     def _on_recording_started(self):
         """Handle recording started."""
         self.is_recording = True
-        self.status_var.set("Status: Recording... Press Start/Stop hotkey to stop")
+        self.status_var.set("Status: Recording... Press Start/Stop hotkey or Stop Recording button to stop")
         self.clear_button.config(state="disabled")
         self.start_script_button.config(state="disabled")
         self.stop_script_button.config(state="disabled")
+        self.stop_recording_button.config(state="normal")
     
     def _on_recording_stopped(self):
         """Handle recording stopped."""
@@ -527,6 +531,7 @@ class MainWindow:
         self.clear_button.config(state="normal")
         self.start_script_button.config(state="normal")
         self.stop_script_button.config(state="disabled")
+        self.stop_recording_button.config(state="disabled")
     
     def _on_key_recorded(self, action):
         """Handle key recorded."""
@@ -537,6 +542,13 @@ class MainWindow:
             key_name = get_key_display_name(key) if key else action.key
         except:
             key_name = str(action.key)
+        
+        # Track the sequence index for this listbox entry so Delete
+        # can remove the correct underlying action(s).
+        sequence = self.recorder.get_recorded_sequence()
+        if sequence and sequence.actions:
+            self._listbox_action_indices.append(len(sequence.actions) - 1)
+        
         self.action_listbox.insert(tk.END, f"Key: {key_name}")
         self.action_listbox.see(tk.END)
     
@@ -547,6 +559,7 @@ class MainWindow:
         self.clear_button.config(state="disabled")
         self.start_script_button.config(state="disabled")
         self.stop_script_button.config(state="normal")
+        self.stop_recording_button.config(state="disabled")
     
     def _on_playback_stopped(self):
         """Handle playback stopped."""
@@ -557,6 +570,7 @@ class MainWindow:
         self.clear_button.config(state="normal")
         self.start_script_button.config(state="normal")
         self.stop_script_button.config(state="disabled")
+        self.stop_recording_button.config(state="disabled")
     
     def _on_start_stop_hotkey(self):
         """Handle start/stop hotkey pressed."""
@@ -594,6 +608,74 @@ class MainWindow:
             # Update button states
             self.start_script_button.config(state="normal")
             self.stop_script_button.config(state="disabled")
+    
+    def _on_stop_recording(self):
+        """Handle stop recording button."""
+        if self.is_recording:
+            self.recorder.stop_recording()
+    
+    def _on_delete_action(self, event=None):
+        """Handle Delete key press on the action listbox.
+
+        Removes the selected action from both the listbox display and the
+        underlying KeySequence.  For KEY_PRESS actions the corresponding
+        KEY_RELEASE action (if present) is also removed to keep the
+        sequence consistent.
+        """
+        selection = self.action_listbox.curselection()
+        if not selection:
+            return
+        
+        listbox_idx = selection[0]
+        
+        # If the listbox is out of sync with our mapping (e.g. user
+        # deleted during an edit), guard against index errors.
+        if listbox_idx >= len(self._listbox_action_indices):
+            # Rebuild mapping and retry
+            sequence = self.recorder.get_recorded_sequence()
+            self._update_action_list_from_sequence(sequence)
+            return
+        
+        sequence_idx = self._listbox_action_indices[listbox_idx]
+        action = self.recorder.current_sequence.actions[sequence_idx]
+        
+        # Determine which actions to remove from the sequence
+        indices_to_remove = {sequence_idx}
+        if action.action_type.value == "key_press":
+            # Also remove the corresponding KEY_RELEASE action for the same key
+            for i, other in enumerate(self.recorder.current_sequence.actions):
+                if (i != sequence_idx and
+                    other.action_type.value == "key_release" and
+                    other.key == action.key):
+                    indices_to_remove.add(i)
+        
+        # Rebuild the sequence without the removed actions
+        new_actions = [
+            a for i, a in enumerate(self.recorder.current_sequence.actions)
+            if i not in indices_to_remove
+        ]
+        self.recorder.current_sequence.actions = new_actions
+        
+        # Refresh the listbox and mapping
+        self._update_action_list_from_sequence(self.recorder.current_sequence)
+        
+        # Restore selection to the next item (or previous if last was removed)
+        new_selection = min(listbox_idx, self.action_listbox.size() - 1)
+        if self.action_listbox.size() > 0:
+            self.action_listbox.selection_set(new_selection)
+            self.action_listbox.see(new_selection)
+        
+        # Update status
+        count = self.recorder.current_sequence.get_key_count()
+        self.status_var.set(f"Status: {count} keys recorded")
+    
+    def _on_action_double_click(self, event=None):
+        """Handle double-click on an action in the listbox.
+
+        Currently a no-op placeholder; reserved for future 'edit action'
+        functionality.
+        """
+        pass
     
     def apply_settings(self, settings: Settings):
         """Apply saved settings to the GUI."""

@@ -3,6 +3,7 @@ Global hotkey management.
 """
 
 import threading
+import time
 from typing import Callable, Optional, Dict
 from pynput import keyboard
 
@@ -53,9 +54,16 @@ class HotkeyManager:
         if self.listener:
             try:
                 self.listener.stop()
+                # Wait for the listener thread to fully terminate before
+                # creating a new one.  pynput's stop() only sets a flag;
+                # without join() the old system-level hook may still be
+                # registered when we try to create the next listener,
+                # which causes intermittent reassignment failures.
+                self.listener.join(timeout=2.0)
             except Exception as e:
                 print(f"Error stopping previous hotkey listener: {e}")
-            self.listener = None
+            finally:
+                self.listener = None
         
         # Build new hotkey mapping
         hotkey_mapping = {}
@@ -74,19 +82,27 @@ class HotkeyManager:
         
         # Start new listener if we have hotkeys
         if hotkey_mapping:
-            try:
-                print(f"Starting hotkey listener with mappings: {list(hotkey_mapping.keys())}")
-                self.listener = keyboard.GlobalHotKeys(hotkey_mapping)
-                self.listener.start()
-                self.is_active = True
-                print("Hotkey listener started successfully")
-                return True
-            except Exception as e:
-                print(f"Error setting up hotkeys: {e}")
-                import traceback
-                traceback.print_exc()
-                self.is_active = False
-                return False
+            # Retry mechanism: registering a system-level hook can
+            # intermittently fail if the previous listener hasn't fully
+            # released its resources.  Retry a few times before giving up.
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    print(f"Starting hotkey listener with mappings: {list(hotkey_mapping.keys())}")
+                    self.listener = keyboard.GlobalHotKeys(hotkey_mapping)
+                    self.listener.start()
+                    self.is_active = True
+                    print("Hotkey listener started successfully")
+                    return True
+                except Exception as e:
+                    print(f"Error setting up hotkeys (attempt {attempt + 1}/{max_retries}): {e}")
+                    import traceback
+                    traceback.print_exc()
+                    self.listener = None
+                    self.is_active = False
+                    if attempt < max_retries - 1:
+                        time.sleep(0.1 * (attempt + 1))  # Brief backoff
+            return False
         else:
             print("No hotkeys to register")
             self.is_active = False
@@ -161,8 +177,13 @@ class HotkeyManager:
     def stop(self):
         """Stop the hotkey manager."""
         if self.listener:
-            self.listener.stop()
-            self.listener = None
+            try:
+                self.listener.stop()
+                self.listener.join(timeout=2.0)
+            except Exception as e:
+                print(f"Error stopping hotkey listener: {e}")
+            finally:
+                self.listener = None
         self.is_active = False
     
     def cleanup(self):
